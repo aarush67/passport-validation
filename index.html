@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>United Kids - Passport Validation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD31ie3gO4Cg9xvUWx3r3ucwFnpmApp8XE",
+            authDomain: "united-kids.firebaseapp.com",
+            projectId: "united-kids",
+            storageBucket: "united-kids.firebasestorage.app",
+            messagingSenderId: "815189001158",
+            appId: "1:815189001158:web:411c5afc0531938ea0e8c7",
+            measurementId: "G-FL4WZ7TJ4Y"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const uid = urlParams.get('uid');
+            const statusDiv = document.getElementById('status');
+
+            statusDiv.innerHTML = '<div class="text-white text-2xl font-semibold">Authenticating...</div>';
+
+            if (uid) {
+                try {
+                    const appDoc = await getDoc(doc(db, 'applications', uid));
+                    if (appDoc.exists() && appDoc.data().status === 'approved') {
+                        setTimeout(() => {
+                            statusDiv.innerHTML = '<div class="text-white text-4xl font-bold">Passport Valid</div>';
+                        }, 2000); // Simulate loading delay
+                    } else {
+                        statusDiv.innerHTML = '<div class="text-red-500 text-2xl font-semibold">Passport Invalid</div>';
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = '<div class="text-red-500 text-2xl font-semibold">Error Verifying Passport</div>';
+                    console.error('Verification error:', error);
+                }
+            } else {
+                statusDiv.innerHTML = '<div class="text-red-500 text-2xl font-semibold">No UID Provided</div>';
+            }
+        });
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #4b6cb7, #182848);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="status" class="text-center p-6 bg-white/10 backdrop-blur-md rounded-lg shadow-lg"></div>
+</body>
+</html>
