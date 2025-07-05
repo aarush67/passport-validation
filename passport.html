@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>United Kids - Passport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        .passport-bg {
+            background: linear-gradient(90deg, #003087 0%, #ff9933 100%);
+            border: 5px solid #000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .seal {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23FFD700"/><text x="50" y="55" font-size="20" text-anchor="middle" fill="%23000">UK</text></svg>') no-repeat center;
+            background-size: contain;
+            height: 50px;
+            width: 50px;
+        }
+        #passportContent {
+            background: #fff;
+            padding: 20px;
+            border-top: 5px solid #000;
+            border-bottom: 5px solid #000;
+            height: 560px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        #qrCanvas {
+            border: 2px solid #000;
+            width: 100px !important;
+            height: 100px !important;
+        }
+        #imageContainer img {
+            max-height: 150px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gray-200">
+    <div class="passport-bg w-[400px] h-[600px] rounded-lg relative">
+        <div class="seal absolute top-4 left-4"></div>
+        <div class="seal absolute bottom-4 right-4 transform rotate-45"></div>
+        <div id="passportContent" class="text-black mt-16">
+            <div class="space-y-2">
+                <h2 class="text-2xl font-bold text-center mb-4">United Kids Passport</h2>
+                <div class="border-t border-black my-2"></div>
+                <p><strong>Passport No:</strong> <span id="passportId" class="ml-2">UK-2025-001</span></p>
+                <p><strong>Name:</strong> <span id="passportUsername" class="ml-2"></span></p>
+                <p><strong>Gender:</strong> <span id="passportGender" class="ml-2"></span></p>
+                <p><strong>Nationality:</strong> <span id="passportEthnicity" class="ml-2">United Citizen</span></p>
+                <p><strong>Date of Issue:</strong> <span class="ml-2">2025-07-05</span></p>
+                <p><strong>Date of Expiry:</strong> <span class="ml-2">2035-07-05</span></p>
+                <div id="imageContainer" class="mt-4"></div>
+            </div>
+            <div class="flex justify-center mb-4">
+                <canvas id="qrCanvas" width="100" height="100"></canvas>
+            </div>
+            <button id="signOutPassport" class="w-full mt-4 bg-red-600 hover:bg-red-700 text-white p-3 rounded-lg font-medium transition duration-200">Sign Out</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getAuth, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD31ie3gO4Cg9xvUWx3r3ucwFnpmApp8XE",
+            authDomain: "united-kids.firebaseapp.com",
+            projectId: "united-kids",
+            storageBucket: "united-kids.firebasestorage.app",
+            messagingSenderId: "815189001158",
+            appId: "1:815189001158:web:411c5afc0531938ea0e8c7",
+            measurementId: "G-FL4WZ7TJ4Y"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const passportUsername = document.getElementById('passportUsername');
+        const passportGender = document.getElementById('passportGender');
+        const imageContainer = document.getElementById('imageContainer');
+        const qrCanvas = document.getElementById('qrCanvas');
+        const signOutPassport = document.getElementById('signOutPassport');
+
+        onAuthStateChanged(auth, async (user) => {
+            try {
+                if (user) {
+                    const appDoc = await getDoc(doc(db, 'applications', user.uid));
+                    if (appDoc.exists() && appDoc.data().status === 'approved') {
+                        const data = appDoc.data();
+                        passportUsername.textContent = data.username || 'N/A';
+                        passportGender.textContent = data.gender || 'N/A';
+
+                        // Handle image rendering
+                        if (data.image && data.image.length > 0) {
+                            const img = document.createElement('img');
+                            img.src = `data:image/jpeg;base64,${data.image}`;
+                            img.alt = 'Passport Photo';
+                            img.className = 'w-32 h-40 object-cover rounded mt-4 border-2 border-black';
+                            img.onerror = () => {
+                                imageContainer.innerHTML = '<p class="text-red-500 mt-4">Failed to load photo</p>';
+                                console.error('Image load error:', img.src);
+                            };
+                            imageContainer.innerHTML = '';
+                            imageContainer.appendChild(img);
+                        } else {
+                            imageContainer.innerHTML = '<p class="text-red-500 mt-4">No photo available</p>';
+                        }
+
+                        // Render QR code to a public URL
+                        if (qrCanvas) {
+                            QRCode.toCanvas(qrCanvas, 'https://aarush67.github.io/passport-valid', { width: 100, height: 100 }, (error) => {
+                                if (error) console.error('QR Code Error:', error);
+                            });
+                        } else {
+                            console.error('QR Canvas element not found');
+                        }
+                    } else {
+                        window.location.href = '/pending';
+                    }
+                } else {
+                    window.location.href = '/auth';
+                }
+            } catch (error) {
+                console.error('Error displaying passport:', error);
+                imageContainer.innerHTML = '<p class="text-red-500 mt-4">Error loading passport data</p>';
+            }
+        });
+
+        signOutPassport.addEventListener('click', () => signOut(auth));
+    </script>
+</body>
+</html>
